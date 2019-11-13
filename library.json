@@ -1,0 +1,12 @@
+{
+  "name": "ESP OTA GitHub",
+  "keywords": "esp8266, esp32, ota, git",
+  "description": "ESP library for auto updating code from GitHub releases.",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/yknivag/ESP_OTA_GitHub"
+  },
+  "frameworks": "arduino",
+  "platforms": "ESP8266, esp8266"
+}

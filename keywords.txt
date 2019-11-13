@@ -1,0 +1,5 @@
+ESPOTAGitHub      KEYWORD1
+checkUpgrade      KEYWORD2
+doUpgrade         KEYWORD2
+getLastError      KEYWORD2
+getUpgradeURL     KEYWORD2
