@@ -139,12 +139,12 @@ bool ESPOTAGitHub::checkUpgrade() {
       while (client.connected()) {
             String response = client.readStringUntil('\n');
             if (response == "\r") {
-            Serial.println("headers received");
             break;
             }
       }
+      String response = client.readStringUntil('\n');
       //client->stop();
-
+      
       DynamicJsonBuffer jsonBuffer;
       JsonObject& root = jsonBuffer.parseObject(response);
 
