@@ -30,6 +30,16 @@ There are no specific hardware or wiring requirements.
 
 Update your ESP866 based device directly from adding a binary to a GitHub release.
 
+## Mode of operation
+
+Calling `checkUpgrade()` connects to the repository `GHOTA_REPO` owned by `GHOTA_USER` and checks the latest release number.  If that number is different from that specified in `GHOTA_CURRENT_TAG` then it searches the assets attached to that release for a file with the name `GHOTA_BIN_FILE`, if one is found then it determines that the current code is no longer the current one and that is a release it should be interested in.
+
+If `GHOTA_ACCEPT_PRERELEASE` is false then a further check is done to ensure the release of interest is not a pre-release.  If it is it is disregarded.
+
+Should `checkUpgrade()` have found that the latest release meets the pre-release condition (if set) and is of a different tag number and also contains a matching filename then it will return `true`. Alternatively it will return `false`.
+
+Once `checkUpgrade()` has been run and returned `true` it is possible to call `doUpgrade()` (potentially after some user confirmation).  This uses the built in `ESP8266httpUpdate` function to retrieve and flash the target binary previously identified and restarts the device.
+
 ## Usage
 
 ### Settings
