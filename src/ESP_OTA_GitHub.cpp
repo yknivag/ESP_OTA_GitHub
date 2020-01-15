@@ -145,51 +145,108 @@ bool ESPOTAGitHub::checkUpgrade() {
       String response = client.readStringUntil('\n');
       //client->stop();
       
-      DynamicJsonBuffer jsonBuffer;
-      JsonObject& root = jsonBuffer.parseObject(response);
+	  // --- ArduinoJSON v5 --- //
+	  
+      // DynamicJsonBuffer jsonBuffer;
+      // JsonObject& root = jsonBuffer.parseObject(response);
 
-      if (root.success()) {
-            if (root.containsKey("tag_name")) {
-                  const char* current_tag = _currentTag;
-                  const char* release_tag = root["tag_name"];
-                  const char* release_name = root["name"];
-                  const char* release_prerelease = root["prerelease"];
-                  if (strcmp(release_tag, _currentTag) != 0) {
+      // if (root.success()) {
+            // if (root.containsKey("tag_name")) {
+                  // const char* current_tag = _currentTag;
+                  // const char* release_tag = root["tag_name"];
+                  // const char* release_name = root["name"];
+                  // const char* release_prerelease = root["prerelease"];
+                  // if (strcmp(release_tag, _currentTag) != 0) {
 
-                        if (!_preRelease) {
-                              if (strcmp(release_prerelease, "true") == 0) {
-                                    _lastError = "Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.";
-                                    return false;
-                              }
-                        }
+                        // if (!_preRelease) {
+                              // if (strcmp(release_prerelease, "true") == 0) {
+                                    // _lastError = "Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.";
+                                    // return false;
+                              // }
+                        // }
 
-                        JsonArray& assets = root["assets"];
-                        for (auto& asset : assets) {
-                              const char* asset_type = asset["content_type"];
-                              const char* asset_name = asset["name"];
-                              const char* asset_url = asset["browser_download_url"];
+                        // JsonArray& assets = root["assets"];
+                        // for (auto& asset : assets) {
+                              // const char* asset_type = asset["content_type"];
+                              // const char* asset_name = asset["name"];
+                              // const char* asset_url = asset["browser_download_url"];
 
-                              if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 && strcmp(asset_name, _binFile) == 0) {
-                                    _upgradeURL = asset_url;
+                              // if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 && strcmp(asset_name, _binFile) == 0) {
+                                    // _upgradeURL = asset_url;
 
-                                    return true;
-                              } else {
-                                    _lastError = "No valid binary found for latest release.";
-                                    return false;
-                              }
-                        }
-                  } else {
-                        _lastError = "Already running latest release.";
-                        return false;
-                  }
-            } else {
-                  _lastError = "JSON didn't match expected structure.";
+                                    // return true;
+                              // } else {
+                                    // _lastError = "No valid binary found for latest release.";
+                                    // return false;
+                              // }
+                        // }
+                  // } else {
+                        // _lastError = "Already running latest release.";
+                        // return false;
+                  // }
+            // } else {
+                  // _lastError = "JSON didn't match expected structure.";
+                  // return false;
+            // }
+      // } else {
+            // _lastError = "Response does not appear to be JSON.";
+            // return false;
+      // }
+	  
+	  // --- END ArduinoJSON v5 --- //
+	  
+	  // --- ArduinoJSON v6 --- //
+	  
+	  // Get from https://arduinojson.org/v6/assistant/
+	  const size_t capacity = JSON_ARRAY_SIZE(3) + 3*JSON_OBJECT_SIZE(13) + 5*JSON_OBJECT_SIZE(18) + 5560;
+	  DynamicJsonDocument doc(capacity);
+	  
+	  DeserializationError error = deserializeJson(doc, response);
+	  if (!error) {
+		  if (doc.containsKey("tag_name")) {
+			  const char* release_tag = doc["tag_name"];
+              const char* release_name = doc["name"];
+              const char* release_prerelease = doc["prerelease"];
+			  if (strcmp(release_tag, _currentTag) != 0) {
+				  if (!_preRelease) {
+					  if (strcmp(release_prerelease, "true") == 0) {
+						  _lastError = "Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.";
+						  return false;
+					  }
+				  }
+				  JsonArray assets = doc["assets"];
+				  bool valid_asset = false;
+				  for (auto asset : assets) {
+					  const char* asset_type = asset["content_type"];
+					  const char* asset_name = asset["name"];
+					  const char* asset_url = asset["browser_download_url"];
+					  
+					  if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 && strcmp(asset_name, _binFile) == 0) {
+						  _upgradeURL = asset_url;
+						  valid_asset = true;
+					  } else {
+						  valid_asset = false;
+					  }
+				  }
+				  if (valid_asset) {
+					  return true;
+				  } else {
+					  _lastError = "No valid binary found for latest release.";
+					  return false;
+				  }
+			  } else {
+				  _lastError = "Already running latest release.";
                   return false;
-            }
-      } else {
-            _lastError = "Response does not appear to be JSON.";
-            return false;
-      }
+			  }
+		  } else {
+			  _lastError = "JSON didn't match expected structure. 'tag_name' missing.";
+              return false;
+		  }
+	  } else {
+		  _lastError = "Failed to parse JSON. Error was: " + error.c_str();
+          return false;
+	  }
+	  // --- END ArduinoJSON v6 --- //
 }
 
 bool ESPOTAGitHub::doUpgrade() {
