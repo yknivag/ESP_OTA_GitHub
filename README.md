@@ -14,9 +14,13 @@ The work in this library is entirely my own work and released into the public do
 
 The library should work with all boards that can use a `BearSSL::WiFiClientSecure` client.
 
-As with all uses of https with the `BearSSL:WiFiClientSecure` client, this library requires a certificate archive to be generated.  Full instructions can be found at (...) but the incuded example contains such relevant data and python script to generate that data as was current at the time it was published.
-
 The library requires `ArduinoJSON` library prior to v6.  v6 compatibility is likely to follow some time in the near future.
+
+## Certificates
+
+As with all uses of https with the `BearSSL:WiFiClientSecure` client, this library requires a certificate archive to be generated.  Official instructions, such as they are, can be found in the notes at the top of [this example](https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/examples/BearSSL_CertStore/BearSSL_CertStore.ino) but the incuded example contains such relevant data and python script to generate that data as was current at the time it was published.
+
+To regenerate the certificates (as will be needed from time to time) run the python script at ESP_OTA_GitHub/examples/GitHub_Upgrade/certs-from-mozilla.py (the definitive version of this can be found in the esp8266/Arduino repository listed above), create a folder within your sketch folder called "data", copy the generated `certs.ar` file to that folder and use the [ESP SPIFFS Upload Tool](https://github.com/esp8266/arduino-esp8266fs-plugin/) to put that file on the ESP8266 that you wish to use. Thereafter ensure that future uploades are to program space only and do not overwrite this data.  You may use SPIFFS for other purposes too so long as you do not alter the `certs.ar` file in any way.
 
 ## Hardware Wiring
 
@@ -24,7 +28,7 @@ There are no specific hardware or wiring requirements.
 
 ## Features
 
-The library contains 44 Christmas themed icons pre-prepared for use with the PxMatrix library and supported displays. Adding more icons (or removing icons) is a simple as adding correctly formatted .h files to the icons folder within the library structure and adding the appropriate *#include* line to the file *IncludeList.h*.
+Update your ESP866 based device directly from adding a binary to a GitHub release.
 
 ## Usage
 
