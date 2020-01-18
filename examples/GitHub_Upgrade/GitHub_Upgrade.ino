@@ -1,3 +1,12 @@
+/*
+  GitHub_Upgrade.ino - Example for ESP library for auto updating code from GitHub releases.
+  Created by Gavin Smalley, November 13th 2019.
+  Released under the LGPL v2.1.
+  It is the author's intention that this work may be used freely for private
+  and commercial use so long as any changes/improvements are freely shared with
+  the community under the same terms.
+*/
+
 #include <ESP8266WiFi.h>
 #include <FS.h>
 
