@@ -24,11 +24,13 @@ ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, cons
 
 urlDetails_t ESPOTAGitHub::_urlDetails(String url) {
     String proto = "";
+    int port = 80;
     if (url.startsWith("http://")) {
         proto = "http://";
         url.replace("http://", "");
     } else {
         proto = "https://";
+        port = 443;
         url.replace("https://", "");
     }
     int firstSlash = url.indexOf('/');
@@ -39,8 +41,8 @@ urlDetails_t ESPOTAGitHub::_urlDetails(String url) {
 
     urlDetail.proto = proto;
     urlDetail.host = host;
+    urlDetail.port = port;
     urlDetail.path = path;
-    urlDetail.url = proto + host + path;
 
     return urlDetail;
 }
@@ -49,11 +51,8 @@ bool ESPOTAGitHub::_resolveRedirects() {
     urlDetails_t splitURL = _urlDetails(_upgradeURL);
     String proto = splitURL.proto;
     String host = splitURL.host;
+    int port = splitURL.port;
     String path = splitURL.path;
-    int port = 80;
-    if (proto.startsWith("https")) {
-        port = 443;
-    }
     bool isFinalURL = false;
 
     BearSSL::WiFiClientSecure client;
@@ -72,10 +71,14 @@ bool ESPOTAGitHub::_resolveRedirects() {
 
         while (client.connected()) {
             String response = client.readStringUntil('\n');
-            if (response.startsWith("Location: ")) {
+            if (response.startsWith("location: ") || response.startsWith("Location: ")) {
                 isFinalURL = false;
                 String location = response;
-                location.replace("Location: ", "");
+				if (response.startsWith("location: ")) {
+					location.replace("location: ", "");
+				} else {
+					location.replace("Location: ", "");
+				}
                 location.remove(location.length() - 1);
 
                 if (location.startsWith("http://") || location.startsWith("https://")) {
@@ -83,12 +86,8 @@ bool ESPOTAGitHub::_resolveRedirects() {
                     urlDetails_t url = _urlDetails(location);
                     proto = url.proto;
                     host = url.host;
+                    port = url.port;
                     path = url.path;
-                    if (proto.startsWith("https://")) {
-                        port = 443;
-                    } else {
-                        port = 80;
-                    }
                 } else {
 					//relative URL - host is the same as before, location represents the new path.
                     path = location;
@@ -117,7 +116,7 @@ bool ESPOTAGitHub::_resolveRedirects() {
 
 // Set time via NTP, as required for x.509 validation
 void ESPOTAGitHub::_setClock() {
-	configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // UTC
+	configTime(0, 0, GHOTA_NTP1, GHOTA_NTP2);  // UTC
 
 	time_t now = time(nullptr);
 	while (now < 8 * 3600 * 2) {
@@ -222,18 +221,23 @@ bool ESPOTAGitHub::checkUpgrade() {
 
 bool ESPOTAGitHub::doUpgrade() {
     if (_upgradeURL == "") {
-        _lastError = "No upgrade URL set, run checkUpgrade() first.";
-        return false;
-    }
-	
-	_setClock(); // Clock needs to be set to perform certificate checks
+        //_lastError = "No upgrade URL set, run checkUpgrade() first.";
+        //return false;
+		
+		if(!checkUpgrade()) {
+			return false;
+		}
+    } else {
+		_setClock(); // Clock needs to be set to perform certificate checks
+		// Don't need to do this if running check upgrade first, as it will have just been done there.
+	}
 
 	_resolveRedirects();
 	
     urlDetails_t splitURL = _urlDetails(_upgradeURL);
 	
     BearSSL::WiFiClientSecure client;
-    bool mfln = client.probeMaxFragmentLength(splitURL.host, 443, 1024);
+    bool mfln = client.probeMaxFragmentLength(splitURL.host, splitURL.port, 1024);
     if (mfln) {
         client.setBufferSizes(1024, 1024);
     }

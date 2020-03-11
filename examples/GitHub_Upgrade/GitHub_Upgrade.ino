@@ -29,8 +29,27 @@ BearSSL::CertStore certStore;
 #define GHOTA_ACCEPT_PRERELEASE 0
 
 #include <ESP_OTA_GitHub.h>
-// Initialise Update Code
-ESPOTAGitHub ESPOTAGitHub(&certStore, GHOTA_USER, GHOTA_REPO, GHOTA_CURRENT_TAG, GHOTA_BIN_FILE, GHOTA_ACCEPT_PRERELEASE);
+
+void handle_upgade() {
+	// Initialise Update Code
+	//We do this locally so that the memory used is freed when the function exists.
+	ESPOTAGitHub ESPOTAGitHub(&certStore, GHOTA_USER, GHOTA_REPO, GHOTA_CURRENT_TAG, GHOTA_BIN_FILE, GHOTA_ACCEPT_PRERELEASE);
+	
+	Serial.println("Checking for update...");
+    if (ESPOTAGitHub.checkUpgrade()) {
+		Serial.print("Upgrade found at: ");
+		Serial.println(ESPOTAGitHub.getUpgradeURL());
+		if (ESPOTAGitHub.doUpgrade()) {
+			Serial.println("Upgrade complete."); //This should never be seen as the device should restart on successful upgrade.
+		} else {
+			Serial.print("Unable to upgrade: ");
+			Serial.println(ESPOTAGitHub.getLastError());
+		}
+    } else {
+		Serial.print("Not proceeding to upgrade: ");
+		Serial.println(ESPOTAGitHub.getLastError());
+    }
+}
 
 void setup() {
 	// Start serial for debugging (not used by library, just this sketch).
@@ -56,20 +75,7 @@ void setup() {
 	Serial.println();
   
     /* This is the actual code to check and upgrade */
-    Serial.println("Checking for update...");
-    if (ESPOTAGitHub.checkUpgrade()) {
-		Serial.print("Upgrade found at: ");
-		Serial.println(ESPOTAGitHub.getUpgradeURL());
-		if (ESPOTAGitHub.doUpgrade()) {
-			Serial.println("Upgrade complete."); //This should never be seen as the device should restart on successful upgrade.
-		} else {
-			Serial.print("Unable to upgrade: ");
-			Serial.println(ESPOTAGitHub.getLastError());
-		}
-    } else {
-		Serial.print("Not proceeding to upgrade: ");
-		Serial.println(ESPOTAGitHub.getLastError());
-    }
+    handle_upgade();
     /* End of check and upgrade code */
   
 	// Your setup code goes here

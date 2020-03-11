@@ -50,17 +50,13 @@ Should `checkUpgrade()` have found that the latest release meets the pre-release
 
 Once `checkUpgrade()` has been run and returned `true` it is possible to call `doUpgrade()` (potentially after some user confirmation).  This uses the built in `ESP8266httpUpdate` function to retrieve and flash the target binary previously identified and restarts the device.
 
-## Mode of operation
-
-Calling `checkUpgrade()` connects to the repository `GHOTA_REPO` owned by `GHOTA_USER` and checks the latest release number.  If that number is different from that specified in `GHOTA_CURRENT_TAG` then it searches the assets attached to that release for a file with the name `GHOTA_BIN_FILE`, if one is found then it determines that the current code is no longer the current one and that is a release it should be interested in.
-
-If `GHOTA_ACCEPT_PRERELEASE` is false then a further check is done to ensure the release of interest is not a pre-release.  If it is it is disregarded.
-
-Should `checkUpgrade()` have found that the latest release meets the pre-release condition (if set) and is of a different tag number and also contains a matching filename then it will return `true`. Alternatively it will return `false`.
-
-Once `checkUpgrade()` has been run and returned `true` it is possible to call `doUpgrade()` (potentially after some user confirmation).  This uses the built in `ESP8266httpUpdate` function to retrieve and flash the target binary previously identified and restarts the device.
+Should `doUpgrade()` be called before `checkUpgrade()` then it will check for the upgrade and perform it (if appropriate) all in one action.
 
 ## Usage
+
+### Warning
+
+GitHub have a rate limiter on their API (used by this library during `checkUpgrade()`.  In order to prevent your IP being temporarily blacklisted by GitHub it is recommended that you check for upgrades only in setup or only on user interaction and most certainly not directly in the `loop()` function.
 
 ### Settings
 
@@ -109,7 +105,7 @@ If this function returns true then either `doUpgrade()` can be called immediatel
 
 Returns `true` once an upgrade is successfully completed (though this is never seen as a successful upgrade triggers a reboot).  Returns `false` if something went wrong.  Check `getLastError()` immediately aftewards to determine the cause of the failure.
 
-Must be run AFTER `checkUpgrade()`.  As it is `checkUpgrade()` that determines if there is is an upgrade available and sets the URL to the correct upgrade file.
+Should `doUpgrade()` be called before `checkUpgrade()` then it will check for the upgrade and perform it (if appropriate) all in one action.
 
 ## Ongoing Usage
 
