@@ -44,7 +44,7 @@ class ESPOTAGitHub {
 		
 		BearSSL::CertStore* _certStore;
 		String _lastError; // Holds the last error generated
-		String _upgradeURL; // Holds the upgrade URL (changes when getFinalURL() is run).
+		String _upgradeURL; // Holds the upgrade URL (changes when _resolveRedirects() is run).
 		const char* _user;
 		const char* _repo;
 		const char* _currentTag;
