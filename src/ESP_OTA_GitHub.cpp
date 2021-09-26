@@ -175,7 +175,6 @@ bool ESPOTAGitHub::checkUpgrade() {
 	if (!error) {
 		if (doc.containsKey("tag_name")) {
 			const char* release_tag = doc["tag_name"];
-            const char* release_name = doc["name"];
             bool release_prerelease = doc["prerelease"];
 			if (strcmp(release_tag, _currentTag) != 0) {
 				if (!_preRelease) {
@@ -259,6 +258,8 @@ bool ESPOTAGitHub::doUpgrade() {
             _lastError = "HTTP_UPDATE_OK";
             return true;
     }
+    _lastError = "UNEXPECTED RETURN CODE";
+    return false;
 }
 
 String ESPOTAGitHub::getLastError() {

@@ -23,7 +23,7 @@
 #define GHOTA_NTP1 "pool.ntp.org"
 #define GHOTA_NTP2 "time.nist.gov"
 
-typedef struct urlDetails_t {
+struct urlDetails_t {
     String proto;
     String host;
 	int port;
