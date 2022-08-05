@@ -9,236 +9,126 @@
 
 #include "ESP_OTA_GitHub.h"
 
-ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, const char* repo, const char* currentTag, const char* binFile, bool preRelease) {
-    _certStore = certStore;
-    _user = user;
-    _repo = repo;
-    _currentTag = currentTag;
-    _binFile = binFile;
-    _preRelease = preRelease;
-    _lastError = "";
-    _upgradeURL = "";
-}
-
-/* Private methods */
-
-urlDetails_t ESPOTAGitHub::_urlDetails(String url) {
-    String proto = "";
-    int port = 80;
-    if (url.startsWith("http://")) {
-        proto = "http://";
-        url.replace("http://", "");
-    } else {
-        proto = "https://";
-        port = 443;
-        url.replace("https://", "");
-    }
-    int firstSlash = url.indexOf('/');
-    String host = url.substring(0, firstSlash);
-    String path = url.substring(firstSlash);
-
-    urlDetails_t urlDetail;
-
-    urlDetail.proto = proto;
-    urlDetail.host = host;
-    urlDetail.port = port;
-    urlDetail.path = path;
-
-    return urlDetail;
-}
-
-bool ESPOTAGitHub::_resolveRedirects() {
-    urlDetails_t splitURL = _urlDetails(_upgradeURL);
-    String proto = splitURL.proto;
-    String host = splitURL.host;
-    int port = splitURL.port;
-    String path = splitURL.path;
-    bool isFinalURL = false;
-
-    BearSSL::WiFiClientSecure client;
-    client.setCertStore(_certStore);
-
-    while (!isFinalURL) {
-        if (!client.connect(host, port)) {
-            _lastError = "Connection Failed.";
-            return false;
-        }
-
-        client.print(String("GET ") + path + " HTTP/1.1\r\n" +
-            "Host: " + host + "\r\n" +
-            "User-Agent: ESP_OTA_GitHubArduinoLibrary\r\n" +
-            "Connection: close\r\n\r\n");
-
-        while (client.connected()) {
-            String response = client.readStringUntil('\n');
-            if (response.startsWith("location: ") || response.startsWith("Location: ")) {
-                isFinalURL = false;
-                String location = response;
-				if (response.startsWith("location: ")) {
-					location.replace("location: ", "");
-				} else {
-					location.replace("Location: ", "");
-				}
-                location.remove(location.length() - 1);
-
-                if (location.startsWith("http://") || location.startsWith("https://")) {
-                    //absolute URL - separate host from path
-                    urlDetails_t url = _urlDetails(location);
-                    proto = url.proto;
-                    host = url.host;
-                    port = url.port;
-                    path = url.path;
-                } else {
-					//relative URL - host is the same as before, location represents the new path.
-                    path = location;
-                }
-                //leave the while loop so we don't set isFinalURL on the next line of the header.
-                break;
-            } else {
-                //location header not present - this must not be a redirect. Treat this as the final address.
-                isFinalURL = true;
-            }
-            if (response == "\r") {
-                break;
-            }
-        }
-    }
-
-    if(isFinalURL) {
-        String finalURL = proto + host + path;
-        _upgradeURL = finalURL;
-        return true;
-    } else {
-        _lastError = "CONNECTION FAILED";
-        return false;
-    }
-}
-
-// Set time via NTP, as required for x.509 validation
-void ESPOTAGitHub::_setClock() {
-	configTime(0, 0, GHOTA_NTP1, GHOTA_NTP2);  // UTC
-
-	time_t now = time(nullptr);
-	while (now < 8 * 3600 * 2) {
-		yield();
-		delay(500);
-		now = time(nullptr);
-	}
-
-	struct tm timeinfo;
-	gmtime_r(&now, &timeinfo);
-}
-
 /* Public methods */
 
-bool ESPOTAGitHub::checkUpgrade() {
-	
-	_setClock(); // Clock needs to be set to perform certificate checks
-	
-    BearSSL::WiFiClientSecure client;
+ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore *certStore, const char *user,
+                           const char *repo, const char *currentTag,
+                           const char *binFile, const bool preRelease)
+    : _certStore(certStore), _user(user), _repo(repo), _currentTag(currentTag),
+      _binFile(binFile), _preRelease(preRelease)
+{
+}
+
+bool ESPOTAGitHub::checkUpgrade()
+{
+    _setClock(); // Clock needs to be set to perform certificate checks
+
+    WiFiClientSecure client;
     client.setCertStore(_certStore);
-    if (!client.connect(GHOTA_HOST, GHOTA_PORT)) {
+
+    if (!client.connect(GHOTA_HOST, GHOTA_PORT))
+    {
+        client.stop();
         _lastError = "Connection failed";
         return false;
     }
-	  
-    String url = "/repos/";
-    url += _user;
-    url += "/";
-    url += _repo;
-    url += "/releases/latest";
-	  
-    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-        "Host: " + GHOTA_HOST + "\r\n" +
-        "User-Agent: ESP_OTA_GitHubArduinoLibrary\r\n" +
-        "Connection: close\r\n\r\n");
 
-    while (client.connected()) {
-        String response = client.readStringUntil('\n');
-        if (response == "\r") {
-			break;
+    client.printf_P(PSTR("GET /repos/%s/%s/releases/latest HTTP/1.1\r\n"
+                         "Host: %s\r\n"
+                         "User-Agent: ESP_OTA_GitHubArduinoLibrary\r\n"
+                         "Connection: close\r\n\r\n"),
+                    _user, _repo, GHOTA_HOST);
+
+    // Skip header
+    client.find("\r\n\r\n");
+
+    // Filter to reduce size of resulting doc
+    StaticJsonDocument<32> filter;
+    filter["tag_name"] = true;
+    filter["prerelease"] = true;
+    StaticJsonDocument<256> doc;
+    const DeserializationError error = deserializeJson(doc, client, DeserializationOption::Filter(filter));
+
+    client.stop();
+
+    if (error)
+    {
+        _lastError = "Failed to parse JSON: ";
+        _lastError += error.c_str();
+        return false;
+    }
+
+    if (!doc.containsKey("tag_name"))
+    {
+        _lastError = "JSON didn't match expected structure. 'tag_name' missing.";
+        return false;
+    }
+
+    const char *release_tag = doc["tag_name"];
+    // const char *release_name = doc["name"];
+    if (strcmp(release_tag, _currentTag) == 0)
+    {
+        _lastError = "Already running latest release.";
+        return false;
+    }
+
+    if (!_preRelease && doc["prerelease"])
+    {
+        _lastError = "Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.";
+        return false;
+    }
+
+    JsonArray assets = doc["assets"];
+    bool valid_asset = false;
+    for (auto asset : assets)
+    {
+        const char *asset_type = asset["content_type"];
+        const char *asset_name = asset["name"];
+        if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 &&
+            strcmp(asset_name, _binFile) == 0)
+        {
+            _upgradeURL = asset["browser_download_url"].as<String>();
+            valid_asset = true;
+            break;
         }
     }
-    
-	String response = client.readStringUntil('\n');
-    //client->stop();
-	  
-	// --- ArduinoJSON v6 --- //
-	 
-	// Get from https://arduinojson.org/v6/assistant/
-	const size_t capacity = JSON_ARRAY_SIZE(3) + 3*JSON_OBJECT_SIZE(13) + 5*JSON_OBJECT_SIZE(18) + 5560;
 
-	DynamicJsonDocument doc(capacity);
-	  
-	DeserializationError error = deserializeJson(doc, response);
-	  
-	if (!error) {
-		if (doc.containsKey("tag_name")) {
-			const char* release_tag = doc["tag_name"];
-            const char* release_name = doc["name"];
-            bool release_prerelease = doc["prerelease"];
-			if (strcmp(release_tag, _currentTag) != 0) {
-				if (!_preRelease) {
-					if (release_prerelease) {
-						_lastError = "Latest release is a pre-release and GHOTA_ACCEPT_PRERELEASE is set to false.";
-						return false;
-					}
-				}
-				JsonArray assets = doc["assets"];
-				bool valid_asset = false;
-				for (auto asset : assets) {
-					const char* asset_type = asset["content_type"];
-					const char* asset_name = asset["name"];
-					const char* asset_url = asset["browser_download_url"];
-					  
-					if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 && strcmp(asset_name, _binFile) == 0) {
-						_upgradeURL = asset_url;
-						valid_asset = true;
-					} else {
-						valid_asset = false;
-					}
-				}
-				if (valid_asset) {
-					return true;
-				} else {
-					_lastError = "No valid binary found for latest release.";
-					return false;
-				}
-			} else {
-				_lastError = "Already running latest release.";
-                return false;
-			}
-		} else {
-			_lastError = "JSON didn't match expected structure. 'tag_name' missing.";
-            return false;
-		}
-	} else {
-		_lastError = "Failed to parse JSON."; // Error was: " + error.c_str();
+    if (!valid_asset)
+    {
+        _lastError = "No valid binary found for latest release.";
         return false;
-	}
-	// --- END ArduinoJSON v6 --- //
+    }
+
+    return true;
 }
 
-bool ESPOTAGitHub::doUpgrade() {
-    if (_upgradeURL == "") {
+bool ESPOTAGitHub::doUpgrade()
+{
+    if (_upgradeURL == "")
+    {
         //_lastError = "No upgrade URL set, run checkUpgrade() first.";
-        //return false;
-		
-		if(!checkUpgrade()) {
-			return false;
-		}
-    } else {
-		_setClock(); // Clock needs to be set to perform certificate checks
-		// Don't need to do this if running check upgrade first, as it will have just been done there.
-	}
+        // return false;
 
-	_resolveRedirects();
-	
+        if (!checkUpgrade())
+        {
+            return false;
+        }
+    }
+    else
+    {
+        // Clock needs to be set to perform certificate checks
+        // Don't need to do this if running check upgrade first, as it will have just been done there.
+        _setClock();
+    }
+
+    _resolveRedirects();
+
     urlDetails_t splitURL = _urlDetails(_upgradeURL);
-	
-    BearSSL::WiFiClientSecure client;
+
+    WiFiClientSecure client;
     bool mfln = client.probeMaxFragmentLength(splitURL.host, splitURL.port, 1024);
-    if (mfln) {
+    if (mfln)
+    {
         client.setBufferSizes(1024, 1024);
     }
     client.setCertStore(_certStore);
@@ -246,25 +136,138 @@ bool ESPOTAGitHub::doUpgrade() {
     ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
     t_httpUpdate_return ret = ESPhttpUpdate.update(client, _upgradeURL);
 
-    switch (ret) {
-        case HTTP_UPDATE_FAILED:
-            _lastError = ESPhttpUpdate.getLastErrorString();
-            return false;
+    switch (ret)
+    {
+    case HTTP_UPDATE_FAILED:
+        _lastError = ESPhttpUpdate.getLastErrorString();
+        return false;
 
-        case HTTP_UPDATE_NO_UPDATES:
-            _lastError = "HTTP_UPDATE_NO_UPDATES";
-            return false;
+    case HTTP_UPDATE_NO_UPDATES:
+        _lastError = "HTTP_UPDATE_NO_UPDATES";
+        return false;
 
-        case HTTP_UPDATE_OK:
-            _lastError = "HTTP_UPDATE_OK";
-            return true;
+    case HTTP_UPDATE_OK:
+        _lastError = "HTTP_UPDATE_OK";
+        return true;
     }
+
+    return false;
 }
 
-String ESPOTAGitHub::getLastError() {
-    return _lastError;
+const String &ESPOTAGitHub::getLastError() { return _lastError; }
+
+const String &ESPOTAGitHub::getUpgradeURL() { return _upgradeURL; }
+
+/* Private methods */
+
+void ESPOTAGitHub::_setClock()
+{
+    configTime(0, 0, GHOTA_NTP1, GHOTA_NTP2); // UTC
+
+    time_t now = time(nullptr);
+    while (now < 8 * 3600 * 2)
+    {
+        yield();
+        delay(500);
+        now = time(nullptr);
+    }
+
+    struct tm timeinfo;
+    gmtime_r(&now, &timeinfo);
 }
 
-String ESPOTAGitHub::getUpgradeURL() {
-    return _upgradeURL;
+urlDetails_t ESPOTAGitHub::_urlDetails(const String &url)
+{
+    urlDetails_t urlDetails;
+    if (url.startsWith("http://"))
+    {
+        urlDetails.proto = "http://";
+        urlDetails.port = 80;
+    }
+    else
+    {
+        urlDetails.proto = "https://";
+        urlDetails.port = 443;
+    }
+    const unsigned int protoLen = urlDetails.proto.length();
+    const int firstSlash = url.indexOf('/', protoLen);
+    urlDetails.host = url.substring(protoLen, firstSlash);
+    urlDetails.path = url.substring(firstSlash);
+    return urlDetails;
+}
+
+bool ESPOTAGitHub::_resolveRedirects()
+{
+    urlDetails_t splitURL = _urlDetails(_upgradeURL);
+    bool isFinalURL = false;
+
+    WiFiClientSecure client;
+    client.setCertStore(_certStore);
+
+    while (!isFinalURL)
+    {
+        if (!client.connect(splitURL.host.c_str(), splitURL.port))
+        {
+            _lastError = "Connection Failed.";
+            return false;
+        }
+
+        client.printf_P(PSTR("GET %s HTTP/1.1\r\n"
+                             "Host: %s\r\n"
+                             "User-Agent: ESP_OTA_GitHubArduinoLibrary\r\n"
+                             "Connection: close\r\n\r\n"),
+                        splitURL.path, splitURL.host);
+
+        while (client.connected())
+        {
+            const String response = client.readStringUntil('\n');
+            const bool startsWithLowerL = response.startsWith("location: ");
+            if (startsWithLowerL || response.startsWith("Location: "))
+            {
+                isFinalURL = false;
+                String location = response;
+                if (startsWithLowerL)
+                {
+                    location.replace("location: ", "");
+                }
+                else
+                {
+                    location.replace("Location: ", "");
+                }
+                location.remove(location.length() - 1);
+
+                if (location.startsWith("http://") || location.startsWith("https://"))
+                {
+                    // absolute URL - separate host from path
+                    splitURL = _urlDetails(location);
+                }
+                else
+                {
+                    // relative URL - host is the same as before, location represents the new path.
+                    splitURL.path = location;
+                }
+                // leave the while loop so we don't set isFinalURL on the next line of the header.
+                break;
+            }
+            else
+            {
+                // location header not present - this must not be a redirect. Treat this as the final address.
+                isFinalURL = true;
+            }
+            if (response == "\r")
+            {
+                break;
+            }
+        }
+    }
+
+    if (isFinalURL)
+    {
+        _upgradeURL = splitURL.proto + splitURL.host + splitURL.path;
+    }
+    else
+    {
+        _lastError = "CONNECTION FAILED";
+    }
+    return isFinalURL;
 }
