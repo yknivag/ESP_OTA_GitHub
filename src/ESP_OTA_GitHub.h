@@ -19,6 +19,8 @@
 #define GHOTA_PORT 443
 #define GHOTA_TIMEOUT 1500
 #define GHOTA_CONTENT_TYPE "application/octet-stream"
+//adding alternatively allowed MIME type for binaries that were compiled on Arduino IDE on MacOS:
+#define GHOTA_CONTENT_TYPE_MAC "application/macbinary"
 
 #define GHOTA_NTP1 "pool.ntp.org"
 #define GHOTA_NTP2 "time.nist.gov"

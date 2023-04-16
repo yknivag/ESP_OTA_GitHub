@@ -175,8 +175,22 @@ bool ESPOTAGitHub::checkUpgrade() {
 	if (!error) {
 		if (doc.containsKey("tag_name")) {
 			const char* release_tag = doc["tag_name"];
+			Serial.print("Found a GitHub release with release tag "); 
+			Serial.println(release_tag); 
             const char* release_name = doc["name"];
             bool release_prerelease = doc["prerelease"];
+
+
+Serial.println(); 
+Serial.println("comparing release tag (from GitHub) with current tag (of this running software):"); 
+Serial.print("current tag in this running software : ");
+Serial.println(_currentTag);
+
+Serial.print("release tag from the binary on GitHub: ");
+Serial.println(release_tag);
+
+
+
 			if (strcmp(release_tag, _currentTag) != 0) {
 				if (!_preRelease) {
 					if (release_prerelease) {
@@ -190,12 +204,46 @@ bool ESPOTAGitHub::checkUpgrade() {
 					const char* asset_type = asset["content_type"];
 					const char* asset_name = asset["name"];
 					const char* asset_url = asset["browser_download_url"];
+
+
+
 					  
-					if (strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0 && strcmp(asset_name, _binFile) == 0) {
+					if (((strcmp(asset_type, GHOTA_CONTENT_TYPE) == 0)||(strcmp(asset_type, GHOTA_CONTENT_TYPE_MAC) == 0)) && strcmp(asset_name, _binFile) == 0) {
 						_upgradeURL = asset_url;
 						valid_asset = true;
+						Serial.println();
+						Serial.println("checks successful, all requirements are met. We can update from GitHub now!");
+						Serial.println();
 					} else {
 						valid_asset = false;
+						Serial.println();
+						Serial.print("at least one of the checks regarding the binary on GitHub FAILED.");
+						Serial.println();
+
+
+
+						if ((strcmp(asset_type, GHOTA_CONTENT_TYPE) != 0) && (strcmp(asset_type, GHOTA_CONTENT_TYPE_MAC) != 0)){
+							Serial.println("wrong MIME type detected. The MIME type of the uploaded Binary does not match the requirement. ");
+							Serial.println("You need to upload a binary that has MIME type application/octet-stream or application/macbinary.");
+							Serial.print("The MIME type of the binary that was uploaded as an asset to latest GitHub release is : ");
+							Serial.println(asset_type);
+							Serial.print("this must match either the mime type of GHOTA_CONTENT_TYPE, which is            : ");
+							Serial.println(GHOTA_CONTENT_TYPE);
+							Serial.print("...or it must match the mime type of GHOTA_CONTENT_TYPE_MAC, which is           : ");
+							Serial.println(GHOTA_CONTENT_TYPE_MAC);
+							Serial.println("Both is not the case, you need to correct that either on the side of the uploaded binary,");
+							Serial.println("or by modifying ESP_OTA_GitHub.h and ESP_OTA_GitHub.cpp files of the Library ESP-OTA_GitHub by adding your additional MIME type - if applicable.")
+						}
+						if ( strcmp(asset_name, _binFile) != 0){
+							Serial.println("wrong file name. The file name of the uploaded binary does not match the requirement. ");
+							Serial.println("Upload a binary as an asset to a release of your repository that matches the file name set in your Arduino code, ");
+ 							Serial.print("or adapt the filename for the binary that has been (pre)set in your Arduino code.");
+							Serial.print("File name of the binary that was uploaded as an asset of the latest GitHub release   : ");
+							Serial.println(asset_name);
+							Serial.print("File name requirement of the Arduino sketch, which is set with #define GHOTA_BIN_FILE: ");
+							Serial.println(_binFile);
+							Serial.println();
+						}
 					}
 				}
 				if (valid_asset) {
