@@ -212,7 +212,7 @@ Serial.println(release_tag);
 						_upgradeURL = asset_url;
 						valid_asset = true;
 						Serial.println();
-						Serial.println("checks successful, all requirements are met. We can update from GitHub now!");
+						Serial.println("checks successful, all requirements are met. Updating from GitHub now!");
 						Serial.println();
 					} else {
 						valid_asset = false;
@@ -232,7 +232,7 @@ Serial.println(release_tag);
 							Serial.print("...or it must match the mime type of GHOTA_CONTENT_TYPE_MAC, which is           : ");
 							Serial.println(GHOTA_CONTENT_TYPE_MAC);
 							Serial.println("Both is not the case, you need to correct that either on the side of the uploaded binary,");
-							Serial.println("or by modifying ESP_OTA_GitHub.h and ESP_OTA_GitHub.cpp files of the Library ESP-OTA_GitHub by adding your additional MIME type - if applicable.")
+							Serial.println("or by modifying ESP_OTA_GitHub.h and ESP_OTA_GitHub.cpp files of the Library ESP-OTA_GitHub by adding your additional MIME type - if applicable.");
 						}
 						if ( strcmp(asset_name, _binFile) != 0){
 							Serial.println("wrong file name. The file name of the uploaded binary does not match the requirement. ");
