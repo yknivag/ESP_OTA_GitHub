@@ -1,1 +1,5 @@
-FritzBox 7390/myWiFiPassword
+FritzBox AABBCC:password-test
+Testwifi3:testpassword3
+FritzBox 7390:myWiFiPassword
+MyRouter:myPassword
+
