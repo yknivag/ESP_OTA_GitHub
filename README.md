@@ -1,10 +1,17 @@
 # ESP OTA GitHub Library
 
 FORKED from https://github.com/yknivag/ESP_OTA_GitHub,
-to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library.
+to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library. This library works with MacOS as well.
+
 Additionally provide an example sketch that reads wifi credentials from a text file that can be uploaded to SPIFFS memory of the device, so that your code on your public github repository does not necessarily have to contain your wifi credentials.
+Add an example configuration file for MQTT that can be uploaded to SPIFFS memory of the device as well.
+Add functionality to connect to a public MQTT broker and wait for a manual command to start the OTA update.
+Add WiFi-Manager functionality.
+Add functionality to look for the strongest WiFi signal within the WiFis stored in the configuration file and only use the strongest signal. If non is available, automatically start an access point on ESP8266 and provide a website for wifi configuration (using WiFiManager library).
+Add functionality to only try to connect to MQTT if WiFi is connected.
+Add a bool variable to allow setting up whether the code should automatically look for an OTA update when powering on ESP8266.
 
-
+-ORIGINAL DESCRIPTION-
 Automatically update your ESP from exported compiled binaries attached to GitHub releases of your project.  Supports upgrade and downgrade of sketch.  SPIFFS updating not yet supported.
 
 The library is essentially a wrapper for ESP8266 core's built in ESP8266httpUpdate and so shares any dependencies, requirements and operational notes with that library.  This library simply adds the functionality to check GitHub for release details and resolves redirects within GitHub's system to identify the actual binary file required.
