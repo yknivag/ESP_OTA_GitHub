@@ -679,7 +679,9 @@ void setup() {
       Serial.println(". Publish the message 'update' to that topic, to manually");
       Serial.println("start an OTA firmware update from GitHub repository.");
       Serial.println("Example syntax for MacOS / Linux shell:");
-      Serial.println("mosquitto_pub -h broker.hivemq.com -p 1883 -t 'MyDevice/update/' -m 'update'");
+      Serial.print("mosquitto_pub -h broker.hivemq.com -p 1883 -t '");
+      Serial.print(mqttupdateTopic);
+      Serial.println("' -m 'update'");
     }
     else {
       Serial.println(F("ERROR: MQTT connection not successful."));
