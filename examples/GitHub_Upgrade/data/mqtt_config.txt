@@ -1,0 +1,8 @@
+mqttClientId=MyDevice
+mqttDevicenameTopic=MyDevice/devicename/
+mqttupdateTopic=MyDevice/update/
+mqttonlineTopic=MyDevice/status/
+mqttfirmwareTopic=MyDevice/firmwareversion/
+mqttWillTopic=MyDevice/online/
+mqttServer=broker.hivemq.com
+mqttPort_txt=1883
