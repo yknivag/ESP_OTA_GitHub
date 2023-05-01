@@ -1,6 +1,0 @@
-mqttClientId=MyDevice
-mqttDevicenameTopic=MyDevice/devicename/
-mqttupdateTopic=MyDevice/update/
-mqttonlineTopic=MyDevice/status/
-mqttfirmwareTopic=Mydevice/firmwareversion/
-mqttWillTopic=MyDevice/online/
