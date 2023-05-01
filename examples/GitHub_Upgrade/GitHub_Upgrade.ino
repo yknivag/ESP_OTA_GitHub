@@ -13,16 +13,8 @@
    The sketch will read the file, extract Wifi(s) and password(s) and try to connect to them. If it fails, the sketch starts WiFiManager.
    You then can select one of the available netorks and enter the password for it by connecting to the wifi acces point that the wifimanager opens on your ESP8266.
    The Wifi credentials will be saved on the device as well.
-
-   TO DO: use the Wifi credentials that are read from the textfile in memory to compare with available wifis and skip those that are not available.
-   if more than one known wifi (including one that was saved with wifimanager) is available, try connection to the one with the strongest signal first.
-   That could be achieved by using a different version of wifimanager that supports injecting other wifis to check by a command - for example
-   wifiManager.addAP("SSID1", "password1");
-   wifiManager.addAP("SSID2", "password2");
-   just after calling wifiManager.autoConnect();
-   ...which doesnt seem to work with the current library.
    
-   A double reset of ESP8266 will reset wifi credentials.
+   A double reset of ESP8266 will reset wifi credentials. You may need to triple-reset, depending on the speed of pressing reset to detect it correctly.
 */
 #include <ESP8266WiFi.h>
 #include <FS.h>
@@ -31,6 +23,7 @@
 #include <PubSubClient.h>
 #include <DoubleResetDetector.h>
 bool check_OTA_on_boot = false; // may be changed by user before compiling. if set to true, the device will check for an update on each boot.
+
 bool mqtt_config_hasbeenread = false; //do not change. used to know if we need to read the config data
 
 // Number of seconds after reset during which a 
@@ -42,7 +35,9 @@ bool mqtt_config_hasbeenread = false; //do not change. used to know if we need t
 
 DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 
-#ifndef STASSID //Static WiFi SSID and password definitions
+
+//Static WiFi SSID and password definitions
+#ifndef STASSID
 #define STASSID "dont_place_it_here"
 #define STAPSK  "put_it_in_textfile_on_SPIFFS_instead"
 #endif
