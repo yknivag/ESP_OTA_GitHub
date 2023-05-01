@@ -22,9 +22,22 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <DoubleResetDetector.h>
-bool check_OTA_on_boot = false; // may be changed by user before compiling. if set to true, the device will check for an update on each boot.
 
+//general settings:
+bool check_OTA_on_boot = false; // may be changed by user before compiling. if set to true, the device will check for an update on each boot.
+/* Set up values for your repository and binary names */
+#define GHOTA_USER "lademeister"
+#define GHOTA_REPO "ESP_OTA_GitHub"
+#define GHOTA_CURRENT_TAG "0.0.0" //change that to a current version number. if the version tag of your current github release is -for example- 0.2.3, 
+//then your next version needs to set at least 0.2.4 here, and you need to make a new release on your GitHub repository with that versiontag (0.2.4) and add a compiled 
+//binary of your new code as ASSET to that release (not, or not only to the repository itself! - the binary that will be flashed by OTA will be the one that you uploaded as asset fhile creating the new release)
+#define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin"
+#define GHOTA_ACCEPT_PRERELEASE 0 //if set to 1 we will also update if a release of the github repository is set as 'prereelease'. Ignore prereleases if set to 0.
 bool mqtt_config_hasbeenread = false; //do not change. used to know if we need to read the config data
+
+
+
+
 
 // Number of seconds after reset during which a 
 // subseqent reset will be considered a double reset.
@@ -229,17 +242,6 @@ unsigned long boottime = millis();
 #include <CertStoreBearSSL.h>
 BearSSL::CertStore certStore;
 
-/* Set up values for your repository and binary names */
-#define GHOTA_USER "lademeister"
-#define GHOTA_REPO "ESP_OTA_GitHub"
-#define GHOTA_CURRENT_TAG "0.0.0"
-
-
-
-
-#define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin"
-
-#define GHOTA_ACCEPT_PRERELEASE 0 //if set to 1 we will also update if a release of the github repository is set as 'prereelease'. Ignore prereleases if set to 0.
 
 #include <ESP_OTA_GitHub.h>
 // Initialise Update Code
@@ -676,6 +678,8 @@ void setup() {
       Serial.print(mqttServer);
       Serial.println(". Publish the message 'update' to that topic, to manually");
       Serial.println("start an OTA firmware update from GitHub repository.");
+      Serial.println("Example syntax for MacOS / Linux shell:");
+      Serial.println("mosquitto_pub -h broker.hivemq.com -p 1883 -t 'MyDevice/update/' -m 'update'");
     }
     else {
       Serial.println(F("ERROR: MQTT connection not successful."));
