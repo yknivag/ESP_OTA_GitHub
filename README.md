@@ -6,6 +6,7 @@ ESP8266 worldwide OTA capability, start update via MQTT command or automatically
 
 Initial intend was to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library. This library works with MacOS as well.
 
+Implement a solution for memory issues when parsing the JSON file that made the ESP8266 crash with the original library.
 Additionally provide an example sketch that reads wifi credentials from a text file that can be uploaded to SPIFFS memory of the device, so that your code on your public github repository does not necessarily have to contain your wifi credentials.
 Add an example configuration file for MQTT that can be uploaded to SPIFFS memory of the device as well.
 Add functionality to connect to a public MQTT broker and wait for a manual command to start the OTA update.
