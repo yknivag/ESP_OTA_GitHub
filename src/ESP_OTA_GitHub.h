@@ -14,6 +14,16 @@
 #include <ESP8266httpUpdate.h>
 #include <ArduinoJson.h>
 #include <time.h>
+//#include <SSD1306Wire.h>
+//#include <PCF8575.h>
+
+
+//create OLED instance
+//extern SSD1306Wire display;
+
+//create an PCF8575 I2C LED port expander instance
+//extern PCF8575 PCF_20;
+
 
 constexpr static const char *GHOTA_HOST = "api.github.com";
 constexpr static const uint16_t GHOTA_PORT = 443;

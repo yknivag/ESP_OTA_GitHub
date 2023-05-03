@@ -9,6 +9,16 @@
 
 #include "ESP_OTA_GitHub.h"
 
+////#################  PIN DEFINITIONS  #################
+//// Define I2C pins
+//#define SCL_PIN 4    // GPIO4/D2
+//#define SDA_PIN 5    // GPIO5/D1
+
+//SSD1306Wire display(0x3c, SDA_PIN, SCL_PIN);
+//PCF8575 PCF_20(0x20);
+
+
+
 /* Public methods */
 
 ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore *certStore, const char *user,
@@ -180,7 +190,14 @@ bool ESPOTAGitHub::checkUpgrade()
                Serial.print(F("GitHub binary file name: OK - matches as specified in program code: ")); 
                Serial.println(_binFile);
             }
-            Serial.println(F("checks successful, all requirements are met. \n### starting OTA update from GitHub! ###"));
+            Serial.println();
+            Serial.println(F("#######################################################################################"));
+            Serial.println(F("#                                                                                     #"));
+            Serial.println(F("#                     checks successful, all requirements are met.                    #"));
+            Serial.println(F("#                        --> starting OTA update from GitHub! <--                     #"));
+            Serial.println(F("#                                                                                     #"));
+            Serial.println(F("#######################################################################################"));
+            Serial.println();
             Serial.println();
             break;
         }
@@ -274,6 +291,28 @@ bool ESPOTAGitHub::doUpgrade()
         client.setBufferSizes(1024, 1024);
     }
     client.setCertStore(_certStore);
+    //add percentage output during update:
+    ESPhttpUpdate.onProgress([](int progress, int total) {
+  //display.clear();
+  //delay(10);
+  ////display.setFont(ArialMT_Plain_16);
+  //display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  //display.drawProgressBar(4, 36, 120, 10, progress / (total / 100) );
+    Serial.printf("OTA update from GitHub repo: %d%%\n", (progress / (total / 100)));
+    });
+
+    ESPhttpUpdate.onEnd([]() {
+        Serial.println();
+        Serial.println(F("#######################################################################################"));
+        Serial.println(F("#                                                                                     #"));
+        Serial.println(F("#                        OTA update from GitHub repo: finished                        #"));
+        Serial.println(F("#                            - device will reboot now -                               #"));
+        Serial.println(F("#                                                                                     #"));
+        Serial.println(F("#######################################################################################"));
+        Serial.println();
+        Serial.println();
+    Serial.printf("");
+  });
 
     ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
     t_httpUpdate_return ret = ESPhttpUpdate.update(client, _upgradeURL);
