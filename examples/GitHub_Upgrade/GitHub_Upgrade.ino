@@ -22,26 +22,67 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <DoubleResetDetector.h>
+#include <ArduinoOTA.h>
 
 //general settings:
 bool check_OTA_on_boot = false; // may be changed by user before compiling. if set to true, the device will check for an update on each boot.
 /* Set up values for your repository and binary names */
-#define GHOTA_USER "lademeister"
-#define GHOTA_REPO "ESP_OTA_GitHub"
-#define GHOTA_CURRENT_TAG "0.0.0" //change that to a current version number. if the version tag of your current github release is -for example- 0.2.3, 
-//then your next version needs to set at least 0.2.4 here, and you need to make a new release on your GitHub repository with that versiontag (0.2.4) and add a compiled 
-//binary of your new code as ASSET to that release (not, or not only to the repository itself! - the binary that will be flashed by OTA will be the one that you uploaded as asset fhile creating the new release)
-#define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin"
+//assuming you use this example, www.github.com/lademeister/ESP_OTA_GitHub is the repository we are using to fetch our OTA updates from:
+#define GHOTA_USER "lademeister" //the name of the GitHub user that owns the repository you want to update from
+#define GHOTA_REPO "ESP_OTA_GitHub" //the name of the repository you want to update from
+#define GHOTA_CURRENT_TAG "0.2.4" //THis resembles the current version of THIS sketch.
+//If that version number matches the latest release on GitHub, the device will not refleash with the binary (additionally uploaded as an ASSET of the release) from Github.
+// in case of mismatch, the device will upgrade/downgrade, as soon as the check for new firmware is running.
+
+//Explanation: you need to CHANGE THAT in case you create new software. Lets say latest release on GitHub was 0.2.3 and you modify something that you want to be the latest shit.
+//you then set the above line as #define GHOTA_CURRENT_TAG "0.2.4" (or 0.3.0 for major changes) for example.
+//to get that latest software you just created onto your device, you could just flash it locally via USB and you are fine.
+//but to make it available as OTA binary on github, you should:
+
+//1. use Sketch/export compiled binary to create an already compiled .bin file. (-->You should keep the name the same all times unless you understand the comments below)
+//2. upload the latest .ino to your github repository (thats only for reference and for others to work/improve it)
+//3. draft a new release of that github repository (using web interface on github.com) and set a tag for that release that matches your new version number (0.2.4 as in the example above)
+//4. AND, most important, you NEED to upload the binary for that version as an ASSET to that release (you will find a square field where you can drag&drop the .bin when using the GitHub web interface).
+
+//COMMENTS:
+//it is important to understand that you do NOT need to upload the .bin to the actual repository next to the other files in the repository (like the .ino or so).
+//You could do that without harm, but while you are free to upload ten or hundred binaries to your repository, none of them will be used for the OTA update.
+//Only the one binary that was uploaded separately as an asset of the latest release of the repository will be used.
+//You need to create releases manually, they are NOT created by uploading something.
+//The release that you create must have a correct tag (=version numbering) - you can set that manually while drafting a release.
+//The release that you create must have at least the .bin file for that current software version uploaded as an asset.
+//The GHOTA_CURRENT_TAG while compiling that binary must be the SAME as the tag that you set for that release.
+//Note that you also need to set the release as "latest" and that the binary that you compiled fromn your latest code must have the same name that 
+//the firmware which is running on the OTA devices out in the field expects. This name is stored in #define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin", so the 
+//binary you upload as an assed for a new release must be named GitHub_Upgrade.ino.generic.bin to successfully update.
+//Of yourse, you can change that at the beginning of your project to whatever the generated bin file is named as a standard.
+//Lets assume you clone this repository and do your own work and name it 'MyProject'.
+//When you go to Sketch/export compiled binary, depending if you compile for Generic ESP8266 or for Wemos D1 mini or something else, the output name will be different.
+//It could -for example - be named MyProject.D1mini.bin or so.
+//Then you would do yourself a favour in just changing the vaerriable in the sketch to #define GHOTA_BIN_FILE "MyProject.D1mini.bin".
+//When cecking for an OTA update, the code will 
+//-check the version tag: it compares GHOTA_CURRENT_TAG of the currently running software with the tag that you set for the latest release on github.
+//-check the binary name: it compares GHOTA_BIN_FILE with the name of the binary that was uploaded as an asset on github
+//-check the MIME type: nothing you need to care about as long as it works (if you need to adapt look at ESP_OTA_GitHub.h and ESP_OTA_GitHub.cpp file in /src folder of this repository. If you need to edit for other MIME types, then you need to edit the files in the forlder where you imported this library (most likely Arduino/libraries/ESP_OTA_GitHub/src)
+//-check if the release was set as prerelease and compare if accepting a prerelease is allowed in the sketch currently running on the device. #define GHOTA_ACCEPT_PRERELEASE 0 would not allow to update from a release marked as prerelease.
+//only if all requirements are met, an OTA update will be started.
+//So, if you have devices out in the field that expect a binary named aaa.bin and in a later version that you create you change GHOTA_BIN_FILE to bbb.bin, you are fine if you update all devices first.
+//But if you upload a file named bbb.bin as an asset to a new release while the code on the devies still expects aaa.bin, the update will fail.
+//As there is no issue in keeping the same name unchanged forever, you should only change it at the beginning or if needed for some special reason.
+//As the version control is done with the tag number of the GitHub release and the GHOTA_CURRENT_TAG in the code, there is no need for versioning file names.
+
+// ### ATTENTION ###: Understand how it works before you use a different name for the .bin that you upload to GitHub or before you change #define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin".
+
+//additional remark: for testing you may want to flash a device locally that will definitely be OTA updated right away. To do so, just use #define GHOTA_CURRENT_TAG "0.0.0" for the 
+//sketch that you upload to your test device while the GitHub repository at least has a release of 0.0.1. 
+//In this way your test device will update even if you were flashing it with the most recent code (because it thinks it is 0.0.0).
+//That can be handy for testing because you do not need to create new releases each time.
+
+#define GHOTA_BIN_FILE "GitHub_Upgrade.ino.generic.bin" //only change it if you understand the above comments
 #define GHOTA_ACCEPT_PRERELEASE 0 //if set to 1 we will also update if a release of the github repository is set as 'prereelease'. Ignore prereleases if set to 0.
-bool mqtt_config_hasbeenread = false; //do not change. used to know if we need to read the config data
 
 
-
-
-
-// Number of seconds after reset during which a 
-// subseqent reset will be considered a double reset.
-#define DRD_TIMEOUT 10
+#define DRD_TIMEOUT 10 // Number of seconds after reset during which a subseqent reset will be considered a double reset.
 
 // RTC Memory Address for the DoubleResetDetector to use
 #define DRD_ADDRESS 0
@@ -49,12 +90,21 @@ bool mqtt_config_hasbeenread = false; //do not change. used to know if we need t
 DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 
+bool mqtt_config_hasbeenread = false; //do not change. used to know if we need to read the config data
+// Publish device ID and firmware version to MQTT topic
+char device_id[9]; // 8 character hex device ID + null terminator
+
+
+      
+
+
+
 //Static WiFi SSID and password definitions
 #ifndef STASSID
 #define STASSID "dont_place_it_here"
 #define STAPSK  "put_it_in_textfile_on_SPIFFS_instead"
 #endif
-#define wm_accesspointname "ESP8266 OTA-GitHub-Upgrade"
+#define wm_accesspointname "ESP8266 OTA-GitHub-Upgrade" //SSID when device opens up an access point for configuration
 const int wm_accesspointtimeout = 30;
 const int wifitimeout = 6; //in SECONDS.
 
@@ -68,13 +118,14 @@ const int wifitimeout = 6; //in SECONDS.
   mqttWillTopic:MyDeviceName/online/
 
 
-  the "mqtt_config.txt" file contains MQTT topics and variables that are used in the Arduino sketch to connect to the MQTT broker. The contents of the file specify the MQTT client ID, topics for device name, firmware version, online/offline status, and updates. These topics are used by the sketch to publish messages and subscribe to topics on the MQTT broker.
+  The "mqtt_config.txt" file contains MQTT topics and variables that are used in the Arduino sketch to connect to the MQTT broker. The contents of the file specify the MQTT client ID, topics for device name, firmware version, online/offline status, and updates. These topics are used by the sketch to publish messages and subscribe to topics on the MQTT broker.
   The code reads each line of the file, trims the line, and checks if it is a comment or empty. If the line contains a variable name and topic separated by an equals sign, the sketch finds the matching MQTT variable and sets the topic to the corresponding value.
-  For example, the line "mqttDevicenameTopic=MyDevice/devicename/" sets the "mqttDevicenameTopic" variable to "MyDevice/devicename/". You should change 'MyDEvice' to something unique.
+  For example, the line "mqttDevicenameTopic=MyDevice/devicename/" sets the "mqttDevicenameTopic" variable to "MyDevice/devicename/". You should change 'MyDevice' to something unique.
   The sketch uses this variable to subscribe to the "devicename" topic on the public MQTT broker broker.hivemq.com.
   in summary, the "mqtt_config.txt" file allows you to customize the MQTT topics and variables used by the sketch without having to modify the code, and to keep those adaptions privately on the device.
 */
 //the following variables will be automatically changed, if you have uploaded a configuration file named mqtt_config.txt to your ESP8266's SPIFFS memory.
+//You do NOT need to change them here, so that your actual topics can be kept in the mqtt_config.txt on the device, instead of uploading it to a public GitHub repository.
 char* mqttClientId = "MyDevice";
 char* mqttDevicenameTopic = "MyDevice/devicename/";
 char* mqttupdateTopic = "MyDevice/update/";
@@ -108,7 +159,7 @@ const char* validVarNames[] = {
   "mqttPort_txt"
 };
 
-// MQTT topic variables efinition. Essentially, mqttVars is an array of pointers to the MQTT topics that will be read from the mqtt_config.txt file and assigned to the respective MQTT variables.
+// MQTT topic variables definition. Essentially, mqttVars is an array of pointers to the MQTT topics that will be read from the mqtt_config.txt file and assigned to the respective MQTT variables.
 const size_t numValidVarNames = sizeof(validVarNames) / sizeof(validVarNames[0]);
 char** mqttVars[numValidVarNames] = {
   &mqttClientId,
@@ -465,7 +516,13 @@ void setup() {
   // Start serial for debugging (not used by library, just this sketch).
   Serial.begin(115200);
   Serial.println();
+  Serial.println();
+  Serial.println();
   drd.loop();
+  // generate device ID
+  uint32_t chip_id = ESP.getChipId();
+  sprintf(device_id, "%08X", chip_id);
+  
   Serial.println();
   Serial.println();
   Serial.println("================================================================================");
@@ -492,8 +549,18 @@ void setup() {
   Serial.print(numCerts);
   Serial.println(F(" certificates read. "));
   if (numCerts == 0) {
-    Serial.println(F("No certificates found. Did you run certs-from-mozilla.py on your computer and upload the file 'certs.ar' to the SPIFFS memory section on ESP8266 before flashing this sketch to the device?"));
-
+    Serial.println();
+    Serial.println();
+    Serial.println("################################################################################################################################################################");
+    Serial.println(F("No certificates found. Did you run certs-from-mozilla.py (contained in this repository) on your computer and upload the file 'certs.ar' to the SPIFFS memory section on ESP8266 before flashing this sketch to the device?"));
+    Serial.println(F("To upload files to ESP8266's SPIFFS memory I suggest this plugin for Arduino IDE: https://github.com/esp8266/arduino-esp8266fs-plugin, "));
+    Serial.println(F("which will create an entry called 'ESP8266 sketch data upload' in the tools menu. One press uploads all files in the 'data' folder of the sketch."));
+    Serial.println(F("All files that you want to upload to SPIFFS memory section must be in the 'data' folder."));
+    Serial.println(F("The 'data' folder can be the one in the Arduino/libraries/ESP_OTA_GitHub/examples/data folder if you are using the example code, or can be in your local code area where you store your projects if you have saved already.\n There it would most likely be found in ESP_OTA_GitHub/examples/data"));
+    Serial.println(F("HINT: If sketch data upload doesn't work, make sure that serial monitor window is closed."));
+    Serial.println(F("At the end, you want to upload certs.ar, mqtt_config.txt and known_wifis.txt to SPIFFS memory of your ESP8266."));
+    Serial.println(F("Important: if compiling for generic ESP8266, set Tools/erase flash to 'all flash contents' to also delete SPIFFS contents. This is NOT necessary for overwriting files."));
+    Serial.println(F("Usually you will set that to 'sketch only'."));
     return; // Can't connect to anything w/o certs!
   }
 
@@ -669,19 +736,24 @@ void setup() {
     mqtt_connection_tries = 0;
     if (mqttClient.connected()) {
       // Publish online message to MQTT broker
-      mqttClient.publish(mqttWillTopic, "Online", true);
+      mqttClient.publish(mqttWillTopic, "Online", true); //needs correct setup with 'will topic' to work correctly (see OpenMQTTGateway for example)
+      publish_device_info();
       mqttClient.publish(mqttfirmwareTopic, GHOTA_CURRENT_TAG, true);
+      Serial.print(F("Firmware version published to '"));
+      Serial.print(mqttfirmwareTopic);
+      Serial.println(F("."));
       mqttClient.subscribe(mqttupdateTopic);
-      Serial.print("subscribed to topic '");
+      Serial.println();
+      Serial.print(F("Device is now subscribed to topic '"));
       Serial.print(mqttupdateTopic);
       Serial.print("' on ");
       Serial.print(mqttServer);
-      Serial.println(". Publish the message 'update' to that topic, to manually");
-      Serial.println("start an OTA firmware update from GitHub repository.");
-      Serial.println("Example syntax for MacOS / Linux shell:");
-      Serial.print("mosquitto_pub -h broker.hivemq.com -p 1883 -t '");
+      Serial.println(F(". Publish the message 'update' to that topic, to manually"));
+      Serial.println(F("start an OTA firmware update from GitHub repository."));
+      Serial.println(F("Working example syntax for MacOS / Linux shell for this device:"));
+      Serial.print(F("mosquitto_pub -h broker.hivemq.com -p 1883 -t '"));
       Serial.print(mqttupdateTopic);
-      Serial.println("' -m 'update'");
+      Serial.println(F("' -m 'update'"));
     }
     else {
       Serial.println(F("ERROR: MQTT connection not successful."));
@@ -693,12 +765,13 @@ void setup() {
 
 
     //++++++++++++++++++++++
+    setup_local_OTA();
   }
   else {
     Serial.println(F("skipping MQTT connection due to missing Internet connectivity."));
   }
   lastReconnectAttempt = 0;
-  //check_ota_github();
+
   Serial.println("Setup finished. going to loop() now");
   }
 }
@@ -707,6 +780,59 @@ void setup_mqtt_config() {
   read_mqtt_topics_from_configfile();
   mqttClient.setServer(mqttServer, mqttPort);
   mqttClient.setCallback(mqttCallback);
+}
+
+void setup_local_OTA(){
+     ArduinoOTA.setHostname("MyDevice");
+
+  ArduinoOTA.begin();
+    ArduinoOTA.onStart([]() {
+    //ota_target_position =0;
+    //old_ota_target_position = 0;
+//    ausfallschritt_servo.attach(SERVO_PIN);  // attaches the servo on GIO2 to the servo object
+//    ausfallschritt_servo.write(zurück);
+//    delay(100);
+//    ausfallschritt_servo.detach();
+//    display.clear();
+//    display.setFont(ArialMT_Plain_16);
+//    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+//    display.drawString(display.getWidth() / 2, display.getHeight() / 2 - 10, "OTA Update");
+//    display.display();
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    //display.drawProgressBar(4, 36, 120, 10, progress / (total / 100) );
+    Serial.println("Progress: "+ progress);
+    Serial.println("Progress/(total/100): "+ progress / (total / 100));
+    //display.display();
+    //use 'stufe der weisheit' as LED progress bar for OTA update:
+//    int ota_percentage_done=progress / (total / 100);
+//    target_leds(ota_percentage_done);
+
+//    
+//    init_stepper();
+//    //int target_position = map(ota_percentage_done, 0, 100, 0, 200);
+//    int target_position = map(progress, 0, 100, 0, 200);
+//    // Convert position to a number of steps based on the steps per revolution
+//    
+//    ota_target_position=ota_target_position-old_ota_target_position;
+//    
+//    stepper.step(ota_target_position);
+//
+//    old_ota_target_position=ota_target_position;
+//  
+//    free_stepper();
+  });
+
+  ArduinoOTA.onEnd([]() {
+    //ota_target_position =0;
+    //old_ota_target_position = 0;
+//    display.clear();
+//    display.setFont(ArialMT_Plain_16);
+//    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+//    display.drawString(display.getWidth() / 2, display.getHeight() / 2, "rebooting...");
+//    display.display();
+  });
 }
 
 void check_ota_github() {
@@ -749,7 +875,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   for (int i = 0; i < length; i++) {
     message += (char)payload[i];
   }
-  Serial.println("Message received: " + message);
+  Serial.println("MQTT Message received: " + message);
 
   if (strcmp(topic, mqttupdateTopic) == 0) {
     if (message == "update") {
@@ -782,7 +908,10 @@ boolean reconnect() {
       Serial.println("Connected.");
       mqttClient.publish(mqttDevicenameTopic, mqttClientId);
       mqttClient.publish(mqttonlineTopic, " online"); //should be set up with will message so that "offline" appears automatically set by the MQTT broker when the device is offline
+      publish_device_info();
       mqttClient.publish(mqttfirmwareTopic, GHOTA_CURRENT_TAG, true); //true makes the message retained, so that you can see which firmware version the device had when it was last connected.
+
+
       mqttClient.subscribe(mqttupdateTopic);
     }
 
@@ -808,75 +937,16 @@ boolean reconnect() {
 
 }
 
-//void reconnect2() {
-//  Serial.println("Connecting to MQTT Broker...");
-//  setupMQTT();
-//  while (!mqttClient.connected()) {
-//      Serial.println("Reconnecting to MQTT Broker..");
-//
-//      if (mqttClient.connect(mqttClientId)) {
-//        Serial.println("Connected.");
-//        mqttClient.publish(mqttDevicenameTopic, mqttClientId);
-//        mqttClient.publish(mqttonlineTopic, " online");
-//        mqttClient.publish(mqttfirmwareTopic, "0.0.1", true);
-//        mqttClient.subscribe(mqttupdateTopic);
-//      }
-//
-//  }
-//}
-
-
-//void read_known_wifis1(){
-//     // Open the known wifi text file from text file on SPIFFS for reading
-//  File file = SPIFFS.open("/known_wifis.txt", "r");
-//
-//  if (file) {
-//    // Loop through each line in the file
-//    while (file.available()) {
-//      String line = file.readStringUntil('\n');
-//
-////      // Extract the content before and after the first space character
-////      int value = line.substring(0, line.indexOf(' ')).toInt();
-////      String text = line.substring(line.indexOf(' ') + 1);
-//
-//      // Extract the content before and after the first '/' character (which is used to separate SSID and password within one line in the text file
-//      SSID_txt = line.substring(0, line.indexOf('/'));
-//      PASS_txt = line.substring(line.indexOf('/') + 1);
-//
-//      Serial.println("known_wifis.txt was found in SPIFFS memory on ESP8266.");
-//
-//      Serial.print("old WiFi SSID from sketch: ");
-//      Serial.println(STASSID);
-//      Serial.print("old WiFi Password from sketch: ");
-//      Serial.println(STAPSK);
-//
-//      //setting the wifi credentials to the ones that we just read from the text file to use them in our sketch:
-//      #undef STASSID
-//      #define STASSID SSID_txt
-//      #undef STAPSK
-//      #define STAPSK PASS_txt
-//      Serial.println("We will be using the credentials from the text file instead of the ones from the arduino sketch.");
-//      Serial.println();
-//      Serial.println("using WiFi credentials from known_wifis.txt in SPIFFS memory on ESP8266:");
-//      Serial.print("(new) WiFi SSID: ");
-//      Serial.println(STASSID);
-//      Serial.print("(new) WiFi Password: ");
-//      Serial.println(STAPSK);
-//    }
-//
-//    // Close the file
-//    file.close();
-//  }
-//  else{
-//    Serial.println("file 'known_wifis.txt' was not found on SPIFFS memory of ESP8266, not not using any presets for wifi credentials that are set outside this sketch. Using sketch credentials instead:");
-//    Serial.print("WiFi SSID from sketch: ");
-//    Serial.println(STASSID);
-//    Serial.print("WiFi Password from sketch: ");
-//    Serial.println(STAPSK);
-//  }
-//}
-
-
+void publish_device_info() {
+  String message = "DeviceID ";
+  message += device_id;
+  message += " running firmware ";
+  message += GHOTA_CURRENT_TAG;
+  mqttClient.publish(mqttDevicenameTopic, message.c_str());
+  Serial.print("Device info published to '");
+  Serial.print(mqttDevicenameTopic);
+  Serial.println("'.");
+}
 
 void loop () {
 
@@ -884,16 +954,6 @@ void loop () {
   drd.loop(); //double reset detector
   //  OFF FOR DEBUG
   if (WiFi.status() == WL_CONNECTED) { //if connected to wifi
-    //  if (!mqttClient.connected()) {
-    //    while (!mqttClient.connect(mqttClientId)) {
-    //      delay(1000);
-    //    }
-    //    mqttClient.publish(mqttonlineTopic, "Online", true);
-    //  }
-    //
-    //
-    //  // Process MQTT messages
-    //  mqttClient.loop();
     if (!mqttClient.connected()) {
       if (!mqtt_config_hasbeenread) { //if we have not yet read mqtt config, try to read it from config file
         setup_mqtt_config();
@@ -909,10 +969,8 @@ void loop () {
       }
     } else {
       // Client connected
-
       mqttClient.loop();
     }
-    //check_ota_github(); //call that upon request
   }
 
 }
