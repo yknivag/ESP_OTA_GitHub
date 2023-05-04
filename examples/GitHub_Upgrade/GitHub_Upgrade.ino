@@ -16,6 +16,7 @@
    
    A double reset of ESP8266 will reset wifi credentials. You may need to triple-reset, depending on the speed of pressing reset to detect it correctly.
 */
+
 #include <ESP8266WiFi.h>
 #include <FS.h>
 //#include <ESP8266WebServer.h>
@@ -23,14 +24,29 @@
 #include <PubSubClient.h>
 #include <DoubleResetDetector.h>
 #include <ArduinoOTA.h>
+//#include "ESP_OTA_GitHub.h"
+
+#include <Wire.h>
 
 //general settings:
+////#################  PIN DEFINITIONS  #################
+//// Define I2C pins
+//#define SCL_PIN 4    // GPIO4/D2
+//#define SDA_PIN 5    // GPIO5/D1
+
+//SSD1306Wire display(0x3c, SDA_PIN, SCL_PIN);
+//PCF8575 PCF_20(0x20);
+
+
+
+
+
 bool check_OTA_on_boot = false; // may be changed by user before compiling. if set to true, the device will check for an update on each boot.
 /* Set up values for your repository and binary names */
 //assuming you use this example, www.github.com/lademeister/ESP_OTA_GitHub is the repository we are using to fetch our OTA updates from:
 #define GHOTA_USER "lademeister" //the name of the GitHub user that owns the repository you want to update from
 #define GHOTA_REPO "ESP_OTA_GitHub" //the name of the repository you want to update from
-#define GHOTA_CURRENT_TAG "0.2.4" //THis resembles the current version of THIS sketch.
+#define GHOTA_CURRENT_TAG "0.0.0" //This resembles the current version of THIS sketch.
 //If that version number matches the latest release on GitHub, the device will not refleash with the binary (additionally uploaded as an ASSET of the release) from Github.
 // in case of mismatch, the device will upgrade/downgrade, as soon as the check for new firmware is running.
 
@@ -59,7 +75,7 @@ bool check_OTA_on_boot = false; // may be changed by user before compiling. if s
 //Lets assume you clone this repository and do your own work and name it 'MyProject'.
 //When you go to Sketch/export compiled binary, depending if you compile for Generic ESP8266 or for Wemos D1 mini or something else, the output name will be different.
 //It could -for example - be named MyProject.D1mini.bin or so.
-//Then you would do yourself a favour in just changing the vaerriable in the sketch to #define GHOTA_BIN_FILE "MyProject.D1mini.bin".
+//Then you would do yourself a favour in just changing the variable in the sketch to #define GHOTA_BIN_FILE "MyProject.D1mini.bin".
 //When cecking for an OTA update, the code will 
 //-check the version tag: it compares GHOTA_CURRENT_TAG of the currently running software with the tag that you set for the latest release on github.
 //-check the binary name: it compares GHOTA_BIN_FILE with the name of the binary that was uploaded as an asset on github
@@ -90,12 +106,11 @@ bool check_OTA_on_boot = false; // may be changed by user before compiling. if s
 DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 
+
+
 bool mqtt_config_hasbeenread = false; //do not change. used to know if we need to read the config data
 // Publish device ID and firmware version to MQTT topic
 char device_id[9]; // 8 character hex device ID + null terminator
-
-
-      
 
 
 
@@ -462,9 +477,9 @@ void MultiWiFiCheck() {
   else {
     if (bestNetworkIndex >= 0) {
       Serial.println();
-      Serial.print("Strongest (known) network from .txt file: ");
+      Serial.print(F("Strongest (known) network from .txt file: "));
       Serial.print(WiFi.SSID(bestNetworkIndex));
-      Serial.print(", signal strength: ");
+      Serial.print(F(", signal strength: "));
       Serial.println(bestSignalStrength);
     }
   }
@@ -494,7 +509,8 @@ void MultiWiFiCheck() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
-    Serial.println(F("Connected to WiFi!"));
+    Serial.println(F("successfully connected to WiFi."));
+    Serial.print(F("SSID: "));
   } else {
     Serial.println();
     Serial.println(F("Failed to connect to WiFi."));
@@ -504,6 +520,17 @@ void MultiWiFiCheck() {
 
 
 void setup() {
+//  Wire.begin(); // initialize I2C interface
+//  display.init();
+//  display.flipScreenVertically();
+//  display.setContrast(255);
+//  display.display();
+
+    
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println();
+
   if (drd.detectDoubleReset()) {
     Serial.println("======================== Double Reset Detected ========================");
     digitalWrite(LED_BUILTIN, LOW);
@@ -513,7 +540,20 @@ void setup() {
       ESP.restart();
   }
   else{
-  // Start serial for debugging (not used by library, just this sketch).
+
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println();
+//  i2cscan();
+//  PCF_20.begin();
+//  display.init();
+//  display.flipScreenVertically();
+//  display.setContrast(255);
+//  display.clear();
+//  delay(10);
+//  display.setFont(ArialMT_Plain_16);
+//  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+    
   Serial.begin(115200);
   Serial.println();
   Serial.println();
@@ -758,7 +798,7 @@ void setup() {
     else {
       Serial.println(F("ERROR: MQTT connection not successful."));
     }
-    Serial.println();
+    //Serial.println();
     //ALTERNATIVE, BETTER, USING WILLTOPIC (doesn't work with this pubsub library):
     //mqttClient.setWill(mqttWillTopic, "Offline");
     //mqttClient.publish(mqttWillTopic, "Online", true);
@@ -771,7 +811,12 @@ void setup() {
     Serial.println(F("skipping MQTT connection due to missing Internet connectivity."));
   }
   lastReconnectAttempt = 0;
-
+  if (WiFi.status() == WL_CONNECTED) {
+      Serial.print(F("this device is connected to WiFi '"));
+      Serial.print(WiFi.SSID());
+      Serial.print(F("' with IP address: "));
+      Serial.println(WiFi.localIP());
+    }
   Serial.println("Setup finished. going to loop() now");
   }
 }
@@ -783,7 +828,9 @@ void setup_mqtt_config() {
 }
 
 void setup_local_OTA(){
-     ArduinoOTA.setHostname("MyDevice");
+     //ArduinoOTA.setHostname("MyDevice");
+     ArduinoOTA.setHostname(mqttClientId); //using the MQTT name also for the name the device will appear as device for *local* OTA updates over WiFi (using Arduino IDE)
+     
 
   ArduinoOTA.begin();
     ArduinoOTA.onStart([]() {
@@ -948,12 +995,14 @@ void publish_device_info() {
   Serial.println("'.");
 }
 
+
 void loop () {
 
 
   drd.loop(); //double reset detector
   //  OFF FOR DEBUG
   if (WiFi.status() == WL_CONNECTED) { //if connected to wifi
+    ArduinoOTA.handle();
     if (!mqttClient.connected()) {
       if (!mqtt_config_hasbeenread) { //if we have not yet read mqtt config, try to read it from config file
         setup_mqtt_config();
