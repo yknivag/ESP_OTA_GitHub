@@ -292,14 +292,22 @@ bool ESPOTAGitHub::doUpgrade()
     }
     client.setCertStore(_certStore);
     //add percentage output during update:
-    ESPhttpUpdate.onProgress([](int progress, int total) {
-  //display.clear();
-  //delay(10);
-  ////display.setFont(ArialMT_Plain_16);
-  //display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  //display.drawProgressBar(4, 36, 120, 10, progress / (total / 100) );
-    Serial.printf("OTA update from GitHub repo: %d%%\n", (progress / (total / 100)));
-    });
+
+
+ESPhttpUpdate.onProgress([](int progress, int total) {
+  Serial.printf("OTA update from GitHub repo: [");
+  int percent = progress / (total / 100);
+  int bars = percent / 10;
+  for (int i = 0; i < bars; i++) {
+    Serial.print("#");
+  }
+  for (int i = 0; i < 10 - bars; i++) {
+    Serial.print(" ");
+  }
+  Serial.printf("] %d%%\n", percent);
+});
+
+
 
     ESPhttpUpdate.onEnd([]() {
         Serial.println();
