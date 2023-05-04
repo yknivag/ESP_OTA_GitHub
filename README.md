@@ -2,13 +2,14 @@
 
 FORKED from https://github.com/yknivag/ESP_OTA_GitHub,
 
-ESP8266 worldwide OTA capability, start update via MQTT command or automatically, and no need for a private server to host the binary or a private MQTT broker or a VPN connection.
+ESP8266 worldwide OTA capability, start update via MQTT command or automatically, and no need for a private server to host the binary or a private MQTT broker or a VPN connection. Update will be done from a GitHub repository - most likely your own copy or fork from this one, but for testing all files are prepared to test updating also from this repository here.
 
-Initial intend was to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library. This library works with MacOS as well.
+Initial intention was to modify yknivag's repository to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library. This library works with MacOS as well.
 
+Additionally:
 Implement a solution for memory issues when parsing the JSON file that made the ESP8266 crash with the original library.
-Additionally provide an example sketch that reads wifi credentials from a text file that can be uploaded to SPIFFS memory of the device, so that your code on your public github repository does not necessarily have to contain your wifi credentials.
-Add an example configuration file for MQTT that can be uploaded to SPIFFS memory of the device as well.
+Additionally provide an example sketch that reads wifi credentials from a text file that can be uploaded to SPIFFS memory of the device, so that your code on your public github repository does not necessarily have to contain your private wifi credentials.
+Add an example configuration file for MQTT that can be uploaded to SPIFFS memory of the device as well. That allows you to also keep your MQTT configuration privately on the ESP8266 only so that you dont have to publish code that contains this information to a public GitHub repository.
 Add functionality to connect to a public MQTT broker and wait for a manual command to start the OTA update.
 Add WiFi-Manager functionality.
 Add functionality to look for the strongest WiFi signal within the WiFis stored in the configuration file and only use the strongest signal. If none is available, automatically start an access point on ESP8266 and provide a website for wifi configuration (using WiFiManager library).
@@ -16,15 +17,18 @@ Add functionality to only try to connect to MQTT if WiFi is connected.
 Add a bool variable to allow setting up whether the code should automatically look for an OTA update when powering on ESP8266.
 Add possibility to upload MQTT configuration file to spiffs memory.
 
-To upload files to ESP8266's spiffs I suggest the plugin for Arduino IDE:
+To upload files to ESP8266's spiffs I suggest to use this plugin for Arduino IDE:
 https://github.com/esp8266/arduino-esp8266fs-plugin
+It adds a menu entry in Arduino IDE that allows you to easily upload files (that you put into the data directory in the sketch folder) to ESP8266's SPIFFS memory. Note that serial monitor window must be closed for this to work.
 
 Add many comments in .ino for better understanding.
 Add serial console output to explain what you need to do to get it working.
 Update serial console output to describe clearly what you need to do and what is missing.
-Add serial console output that you can copy-paste to a Linux console to manually start an ota update. 
+Add serial console output that you can copy-paste to a Linux console to manually start an ota update, using a MQTT message that requests an OTA update.
 Add serial monitor output for progress percentage during OTA update from GitHub
-Add also local OTA capability to update the device from Arduino IDE directly (via WiFi)
+Add also local OTA capability to update the device from Arduino IDE directly (via WiFi when ESP8266 is in the same network as the computer that runs Arduino IDE).
+
+Please also read the original descriprion from yknivak below:
 
 -ORIGINAL DESCRIPTION-
 Automatically update your ESP from exported compiled binaries attached to GitHub releases of your project.  Supports upgrade and downgrade of sketch.  SPIFFS updating not yet supported.
