@@ -1,10 +1,10 @@
 # ESP OTA GitHub Library
 
-FORKED from https://github.com/yknivag/ESP_OTA_GitHub,
+forked from https://github.com/yknivag/ESP_OTA_GitHub,
 
 ESP8266 worldwide OTA capability, start update via MQTT command or automatically, and no need for a private server to host the binary or a private MQTT broker or a VPN connection. Update will be done from a GitHub repository - most likely your own copy or fork from this one, but for testing all files are prepared to test updating also from this repository here.
 
-Initial intention was to modify yknivag's repository to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesnt work with the original library. This library works with MacOS as well.
+Initial intention was to modify yknivag's repository to add support for binaries that were compiled on Arduino IDE on MacOS. Those binaries have a different MIME type that doesn't work with the original library. This library works with MacOS as well.
 
 Additionally:
 Implement a solution for memory issues when parsing the JSON file that made the ESP8266 crash with the original library.
