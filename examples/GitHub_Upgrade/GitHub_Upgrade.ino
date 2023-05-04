@@ -638,6 +638,15 @@ void setup() {
   //initialize WiFiManager
   if (WiFi.status() != WL_CONNECTED) { //only start wifi manager if we do not yet have a wifi connection from preset wifis
     //WiFiManager wifiManager;
+    wifiManager.setConfigPortalBlocking(false);
+    //wifiManager.setSaveParamsCallback(saveParamsCallback);
+
+    //------------------
+
+  // set dark theme
+    wifiManager.setClass("invert");
+
+    
     wifiManager.setTimeout(wifitimeout);
 
 
@@ -809,6 +818,9 @@ void setup() {
   }
   else {
     Serial.println(F("skipping MQTT connection due to missing Internet connectivity."));
+    Serial.print(F("WiFiManager started, please connect to AP '"));
+    Serial.print(wm_accesspointname);
+    Serial.println(F("' to configure WiFi."));
   }
   lastReconnectAttempt = 0;
   if (WiFi.status() == WL_CONNECTED) {
@@ -998,7 +1010,7 @@ void publish_device_info() {
 
 void loop () {
 
-
+  wifiManager.process();
   drd.loop(); //double reset detector
   //  OFF FOR DEBUG
   if (WiFi.status() == WL_CONNECTED) { //if connected to wifi
