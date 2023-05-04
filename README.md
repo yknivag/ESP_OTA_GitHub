@@ -23,6 +23,9 @@ Add many comments in .ino for better understanding.
 Add serial console output to explain what you need to do to get it working.
 Update serial console output to describe clearly what you need to do and what is missing.
 Add serial console output that you can copy-paste to a Linux console to manually start an ota update. 
+Add serial monitor output for progress percentage during OTA update from GitHub
+Add also local OTA capability to update the device from Arduino IDE directly (via WiFi)
+
 -ORIGINAL DESCRIPTION-
 Automatically update your ESP from exported compiled binaries attached to GitHub releases of your project.  Supports upgrade and downgrade of sketch.  SPIFFS updating not yet supported.
 
