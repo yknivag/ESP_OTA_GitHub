@@ -9,7 +9,7 @@
 
 #include "ESP_OTA_GitHub.h"
 
-ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, const char* repo, const char* currentTag, const char* binFile, bool preRelease) {
+ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, const char* repo, const char* currentTag, const char* binFile, bool preRelease, size_t jsonCapacity) {
     _certStore = certStore;
     _user = user;
     _repo = repo;
@@ -18,6 +18,7 @@ ESPOTAGitHub::ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, cons
     _preRelease = preRelease;
     _lastError = "";
     _upgradeURL = "";
+    _jsonCapacity = jsonCapacity;
 }
 
 /* Private methods */
@@ -166,9 +167,13 @@ bool ESPOTAGitHub::checkUpgrade() {
 	// --- ArduinoJSON v6 --- //
 	 
 	// Get from https://arduinojson.org/v6/assistant/
-	const size_t capacity = JSON_ARRAY_SIZE(3) + 3*JSON_OBJECT_SIZE(13) + 5*JSON_OBJECT_SIZE(18) + 5560;
+    if (_jsonCapacity == 0) {
+	    const size_t _jsonCapacity = JSON_ARRAY_SIZE(3) + 3*JSON_OBJECT_SIZE(13) + 5*JSON_OBJECT_SIZE(18) + 5560;
+    }
 
-	DynamicJsonDocument doc(capacity);
+	DynamicJsonDocument doc(_jsonCapacity);
+
+    // Serial.println(_jsonCapacity);
 	  
 	DeserializationError error = deserializeJson(doc, response);
 	  
@@ -214,6 +219,7 @@ bool ESPOTAGitHub::checkUpgrade() {
 		}
 	} else {
 		_lastError = "Failed to parse JSON."; // Error was: " + error.c_str();
+		Serial.println(error.f_str());
         return false;
 	}
 	// --- END ArduinoJSON v6 --- //
@@ -258,6 +264,8 @@ bool ESPOTAGitHub::doUpgrade() {
         case HTTP_UPDATE_OK:
             _lastError = "HTTP_UPDATE_OK";
             return true;
+        default:
+            return false;
     }
 }
 
