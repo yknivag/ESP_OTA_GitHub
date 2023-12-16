@@ -23,7 +23,7 @@
 #define GHOTA_NTP1 "pool.ntp.org"
 #define GHOTA_NTP2 "time.nist.gov"
 
-typedef struct urlDetails_t {
+struct urlDetails_t {
     String proto;
     String host;
 	int port;
@@ -32,7 +32,7 @@ typedef struct urlDetails_t {
 
 class ESPOTAGitHub {
 	public:
-		ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, const char* repo, const char* currentTag, const char* binFile, bool preRelease);
+		ESPOTAGitHub(BearSSL::CertStore* certStore, const char* user, const char* repo, const char* currentTag, const char* binFile, bool preRelease, size_t jsonCapacity = 0);
 		bool checkUpgrade();
 		bool doUpgrade();
 		String getLastError();
@@ -44,12 +44,13 @@ class ESPOTAGitHub {
 		
 		BearSSL::CertStore* _certStore;
 		String _lastError; // Holds the last error generated
-		String _upgradeURL; // Holds the upgrade URL (changes when _resolveRedirects() is run).
+		String _upgradeURL; // Holds the upgrade URL (changes when getFinalURL() is run).
 		const char* _user;
 		const char* _repo;
 		const char* _currentTag;
 		const char* _binFile;
 		bool _preRelease;
+		size_t _jsonCapacity;
 };
 
 #endif
